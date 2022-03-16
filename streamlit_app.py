@@ -38,7 +38,7 @@ def convergence_clusters_2(mean,clusters):
    # n = s.NormalDist(mu=50, sigma=10)
    # seeds = np.array(n.samples(n_clusters, seed=42))  # remove seed if desired
     seeds=np.array([np.random.randint(limit_rand, size=n_clusters) for i in range(silos)]) #mimic
-    for i in range(40): #arbitrary, until convergence
+    for i in range(10): #arbitrary, until convergence
         c1_=[]
         c2_=[]
 
@@ -92,7 +92,7 @@ def process_data(mean):
 
 c1,c2,c3=st.columns(3)
 metric=c1.selectbox("metric",["Idade Materna","Bishop Score","Cesarianas Anterior","Cesarianas"])
-mean=c2.number_input("Mean",min_value=0,value=0)
+mean=c2.number_input("Mean",min_value=0,value=0,step=0.1)
 limit_rand=c3.number_input("Limit for Random",min_value=0,max_value=1000,value=100)
 
 if st.button("Calculate"):
