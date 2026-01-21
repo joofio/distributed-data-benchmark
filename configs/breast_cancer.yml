@@ -1,0 +1,83 @@
+seed: 42
+
+dataset:
+  type: real
+  path: data/breast_cancer.csv
+  mapping: {}
+
+features:
+  id: institution_id
+  numeric:
+    # Aggregated cell characteristics (means)
+    - clump_thickness_mean
+    - uniformity_cell_size_mean
+    - uniformity_cell_shape_mean
+    - marginal_adhesion_mean
+    - single_epithelial_size_mean
+    - bare_nuclei_mean
+    - bland_chromatin_mean
+    - normal_nucleoli_mean
+    - mitoses_mean
+    # Variability within institution (stds)
+    - clump_thickness_std
+    - uniformity_cell_size_std
+    - uniformity_cell_shape_std
+    - marginal_adhesion_std
+    - single_epithelial_size_std
+    - bare_nuclei_std
+    - bland_chromatin_std
+    - normal_nucleoli_std
+    - mitoses_std
+    # Institution size
+    - n_patients
+  categorical: []
+
+targets:
+  kpis:
+    - target_rate        # Malignancy rate (% malignant cases)
+    - target_std         # Variability in outcomes
+  descriptors:
+    - n_patients
+
+preprocessing:
+  categorical_encoding: ordinal
+
+representation: numeric
+
+consensus:
+  n_bootstraps: 50
+  numeric_jitter_scale: 0.05
+  feature_bootstrap: true
+  sample_fraction: 1.0
+  mixed_weight: 0.5
+
+benchmark:
+  outlier_percentile_low: 5
+  outlier_percentile_high: 95
+  outlier_zscore_abs: 2.0
+  knn_k:
+    - 3
+    - 5
+    - 7
+
+perturbation:
+  enabled: true
+  n_runs: 30
+  n_institutions: 1
+  kpis:
+    - target_rate
+  shift:
+    type: additive
+    magnitude_min: 0.1
+    magnitude_max: 0.3
+    magnitudes: [0.1, 0.2, 0.3]
+
+selection:
+  k_values: [2, 3, 4, 5, 6]
+  min_cluster_size: 2
+  stability_plateau_delta: 0.05
+
+output:
+  tables_dir: reports/breast_cancer/tables
+  figures_dir: reports/breast_cancer/figures
+  summary_path: reports/breast_cancer/summary.json

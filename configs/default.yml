@@ -1,0 +1,65 @@
+seed: 42
+
+dataset:
+  type: real
+  path: tests/fixtures/toy_snapshot.csv
+  mapping: {}
+
+features:
+  id: institution_id
+  numeric:
+    - feature_numeric_1
+    - feature_numeric_2
+  categorical:
+    - region
+    - size_tier
+
+targets:
+  kpis:
+    - kpi_quality
+    - kpi_cost
+  descriptors:
+    - size_tier
+
+preprocessing:
+  categorical_encoding: ordinal
+
+representation: mixed_encoded
+
+consensus:
+  n_bootstraps: 50
+  numeric_jitter_scale: 0.05
+  feature_bootstrap: true
+  sample_fraction: 1.0
+  mixed_weight: 0.5
+
+benchmark:
+  outlier_percentile_low: 5
+  outlier_percentile_high: 95
+  outlier_zscore_abs: 2.0
+  knn_k:
+    - 3
+    - 4
+    - 5
+
+perturbation:
+  enabled: true
+  n_runs: 30
+  n_institutions: 1
+  kpis:
+    - kpi_quality
+  shift:
+    type: additive
+    magnitude_min: 0.1
+    magnitude_max: 0.3
+    magnitudes: [0.1, 0.2, 0.3]
+
+selection:
+  k_values: [2, 3, 4, 5, 6]
+  min_cluster_size: 2
+  stability_plateau_delta: 0.05
+
+output:
+  tables_dir: reports/tables
+  figures_dir: reports/figures
+  summary_path: reports/summary.json

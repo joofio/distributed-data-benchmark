@@ -1,0 +1,10 @@
+institution_id,feature_numeric_1,feature_numeric_2,region,size_tier,kpi_quality,kpi_cost
+inst_1,10,100,North,Small,0.80,120
+inst_2,12,95,South,Small,0.75,130
+inst_3,9,110,North,Medium,0.90,115
+inst_4,15,105,West,Large,0.65,150
+inst_5,11,,East,Medium,0.70,140
+inst_6,14,98,South,Large,0.60,160
+inst_7,,102,West,Small,0.85,125
+inst_8,13,108,East,Medium,0.55,155
+inst_9,8,97,North,Large,0.95,118

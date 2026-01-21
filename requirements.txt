@@ -1,5 +1,8 @@
 scikit-learn
 pandas
 numpy
-streamlit
 matplotlib
+scipy
+kmodes
+PyYAML
+streamlit

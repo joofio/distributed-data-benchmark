@@ -1,0 +1,82 @@
+seed: 42
+
+dataset:
+  type: real
+  path: data/pima_diabetes.csv
+  mapping: {}
+
+features:
+  id: institution_id
+  numeric:
+    # Aggregated patient characteristics (means)
+    - pregnancies_mean
+    - glucose_mean           # Mean plasma glucose
+    - blood_pressure_mean    # Mean diastolic blood pressure
+    - skin_thickness_mean    # Mean triceps skin fold
+    - insulin_mean           # Mean 2-hour serum insulin
+    - bmi_mean               # Mean body mass index
+    - diabetes_pedigree_mean # Mean diabetes pedigree function
+    - age_mean
+    # Variability within institution (stds)
+    - pregnancies_std
+    - glucose_std
+    - blood_pressure_std
+    - skin_thickness_std
+    - insulin_std
+    - bmi_std
+    - diabetes_pedigree_std
+    - age_std
+    # Institution size
+    - n_patients
+  categorical: []
+
+targets:
+  kpis:
+    - target_rate        # Diabetes prevalence rate
+    - target_std         # Variability in outcomes
+  descriptors:
+    - n_patients
+    - age_mean
+
+preprocessing:
+  categorical_encoding: ordinal
+
+representation: numeric
+
+consensus:
+  n_bootstraps: 50
+  numeric_jitter_scale: 0.05
+  feature_bootstrap: true
+  sample_fraction: 1.0
+  mixed_weight: 0.5
+
+benchmark:
+  outlier_percentile_low: 5
+  outlier_percentile_high: 95
+  outlier_zscore_abs: 2.0
+  knn_k:
+    - 3
+    - 5
+    - 7
+
+perturbation:
+  enabled: true
+  n_runs: 30
+  n_institutions: 1
+  kpis:
+    - target_rate
+  shift:
+    type: additive
+    magnitude_min: 0.1
+    magnitude_max: 0.3
+    magnitudes: [0.1, 0.2, 0.3]
+
+selection:
+  k_values: [2, 3, 4, 5, 6]
+  min_cluster_size: 2
+  stability_plateau_delta: 0.05
+
+output:
+  tables_dir: reports/pima_diabetes/tables
+  figures_dir: reports/pima_diabetes/figures
+  summary_path: reports/pima_diabetes/summary.json
