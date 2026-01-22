@@ -79,7 +79,12 @@ def _k_sweep(
     for k in k_values:
         # Run consensus clustering for this K.
         consensus = run_consensus(X, representation, cfg, k, seed)
-        stability_df = stability_summary(consensus.ari_scores, consensus.labels, consensus.confidence)
+        stability_df = stability_summary(
+            consensus.ari_scores,
+            consensus.labels,
+            consensus.confidence,
+            X,
+        )
         stability_row = stability_df.iloc[0].to_dict()
 
         # Run peer benchmarking and perturbation utility evaluation.
@@ -177,7 +182,10 @@ def run_pipeline(config_path: str) -> None:
     save_csv(peer_assignments, f"{tables_dir}/peer_assignments.csv")
     coassign_df.to_csv(f"{tables_dir}/coassignment_matrix.csv")
     save_csv(k_summary, f"{tables_dir}/k_sweep_summary.csv")
-    save_csv(k_summary[["k", "mean_ari", "std_ari", "min_cluster_size", "mean_confidence"]], f"{tables_dir}/stability_summary.csv")
+    save_csv(
+        k_summary[["k", "mean_ari", "std_ari", "min_cluster_size", "mean_confidence", "silhouette"]],
+        f"{tables_dir}/stability_summary.csv",
+    )
     save_csv(benchmark_df, f"{tables_dir}/benchmark_results.csv")
     if not perturb_df.empty:
         save_csv(perturb_df, f"{tables_dir}/perturbation_eval.csv")
