@@ -67,6 +67,18 @@ Figures in `reports/figures`:
 Summary JSON:
 - `reports/summary.json`
 
+## Synthetic institution generation
+
+Use `create_datasets.ipynb` to turn patient-level UCI data into synthetic institutions.
+The notebook exposes a `SPLIT_STRATEGY` option that controls how patients are assigned
+to institutions, which directly affects heterogeneity across institutions:
+
+- `random`: shuffle then split evenly (low structural heterogeneity).
+- `stratified`: balance institutions by a key column (defaults to `target_col`), which
+  smooths KPI prevalence differences.
+- `clustered`: sort by a continuous column and slice, which amplifies institutional
+  differences along that variable.
+
 ## Adding local UCI datasets
 
 Add a local CSV path in the config:

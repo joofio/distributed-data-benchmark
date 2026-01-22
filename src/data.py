@@ -50,11 +50,80 @@ def coerce_id(df: pd.DataFrame, id_col: str) -> pd.DataFrame:
     return df
 
 
+def _assign_institution_ids(
+    df: pd.DataFrame,
+    n_institutions: int,
+    seed: int | None,
+    shuffle: bool,
+    split_strategy: str,
+    stratify_col: str | None,
+    cluster_col: str | None,
+    prefix: str,
+) -> pd.DataFrame:
+    if split_strategy not in {"random", "stratified", "clustered"}:
+        raise ValueError(
+            "split_strategy must be one of: random, stratified, clustered"
+        )
+
+    data = df.copy().reset_index(drop=True)
+    rng = np.random.default_rng(seed)
+
+    if split_strategy == "random":
+        if shuffle:
+            indices = rng.permutation(len(data))
+            data = data.iloc[indices].reset_index(drop=True)
+
+        splits = np.array_split(range(len(data)), n_institutions)
+        institution_ids = [""] * len(data)
+        for i, split_indices in enumerate(splits):
+            inst_id = f"{prefix}_{i + 1}"
+            for idx in split_indices:
+                institution_ids[idx] = inst_id
+        data["institution_id"] = institution_ids
+        return data
+
+    if split_strategy == "stratified":
+        if not stratify_col:
+            raise ValueError("stratify_col is required for stratified split strategy")
+        if stratify_col not in data.columns:
+            raise ValueError(f"stratify_col not found in data: {stratify_col}")
+
+        institution_ids = [""] * len(data)
+        for _, group in data.groupby(stratify_col, sort=False):
+            indices = group.index.to_numpy()
+            if shuffle:
+                indices = rng.permutation(indices)
+            for offset, idx in enumerate(indices):
+                inst_id = f"{prefix}_{(offset % n_institutions) + 1}"
+                institution_ids[idx] = inst_id
+
+        data["institution_id"] = institution_ids
+        return data
+
+    if not cluster_col:
+        raise ValueError("cluster_col is required for clustered split strategy")
+    if cluster_col not in data.columns:
+        raise ValueError(f"cluster_col not found in data: {cluster_col}")
+
+    data = data.sort_values(by=cluster_col, kind="mergesort").reset_index(drop=True)
+    splits = np.array_split(range(len(data)), n_institutions)
+    institution_ids = [""] * len(data)
+    for i, split_indices in enumerate(splits):
+        inst_id = f"{prefix}_{i + 1}"
+        for idx in split_indices:
+            institution_ids[idx] = inst_id
+    data["institution_id"] = institution_ids
+    return data
+
+
 def split_into_institutions(
     df: pd.DataFrame,
     n_institutions: int,
     seed: int | None = None,
     shuffle: bool = True,
+    split_strategy: str = "random",
+    stratify_col: str | None = None,
+    cluster_col: str | None = None,
     prefix: str = "INST",
 ) -> Tuple[List[pd.DataFrame], pd.DataFrame]:
     """
@@ -73,7 +142,13 @@ def split_into_institutions(
     seed : int | None, default None
         Random seed for reproducibility when shuffling.
     shuffle : bool, default True
-        Whether to shuffle rows before splitting. If False, splits sequentially.
+        Whether to shuffle rows before splitting. Used by random/stratified strategies.
+    split_strategy : {"random", "stratified", "clustered"}, default "random"
+        Strategy used to assign institutions.
+    stratify_col : str | None, default None
+        Column to stratify on when split_strategy="stratified".
+    cluster_col : str | None, default None
+        Column to order by when split_strategy="clustered".
     prefix : str, default "INST"
         Prefix for institution IDs (e.g., "INST" -> "INST_1", "INST_2").
 
@@ -99,24 +174,17 @@ def split_into_institutions(
     if n_institutions > len(df):
         raise ValueError(f"n_institutions ({n_institutions}) > rows ({len(df)})")
 
-    result = df.copy().reset_index(drop=True)
-
-    if shuffle:
-        rng = np.random.default_rng(seed)
-        indices = rng.permutation(len(result))
-        result = result.iloc[indices].reset_index(drop=True)
-
-    # Split indices as evenly as possible
-    splits = np.array_split(range(len(result)), n_institutions)
-
-    # Assign institution IDs
-    institution_ids = [""] * len(result)
-    for i, split_indices in enumerate(splits):
-        inst_id = f"{prefix}_{i + 1}"
-        for idx in split_indices:
-            institution_ids[idx] = inst_id
-
-    result.insert(0, "institution_id", institution_ids)
+    result = _assign_institution_ids(
+        df=df,
+        n_institutions=n_institutions,
+        seed=seed,
+        shuffle=shuffle,
+        split_strategy=split_strategy,
+        stratify_col=stratify_col,
+        cluster_col=cluster_col,
+        prefix=prefix,
+    )
+    result.insert(0, "institution_id", result.pop("institution_id"))
 
     # Create list of separate DataFrames per institution
     silos = []
@@ -136,6 +204,9 @@ def aggregate_to_institutions(
     target_col: str,
     seed: int | None = None,
     shuffle: bool = True,
+    split_strategy: str = "random",
+    stratify_col: str | None = None,
+    cluster_col: str | None = None,
     prefix: str = "INST",
 ) -> pd.DataFrame:
     """
@@ -162,6 +233,12 @@ def aggregate_to_institutions(
         Random seed for reproducibility.
     shuffle : bool, default True
         Whether to shuffle patients before assignment.
+    split_strategy : {"random", "stratified", "clustered"}, default "random"
+        Strategy used to assign institutions.
+    stratify_col : str | None, default None
+        Column to stratify on when split_strategy="stratified". Defaults to target_col.
+    cluster_col : str | None, default None
+        Column to order by when split_strategy="clustered".
     prefix : str, default "INST"
         Prefix for institution IDs.
 
@@ -197,22 +274,19 @@ def aggregate_to_institutions(
     if n_institutions > len(df):
         raise ValueError(f"n_institutions ({n_institutions}) > rows ({len(df)})")
 
-    data = df.copy().reset_index(drop=True)
+    if split_strategy == "stratified" and stratify_col is None:
+        stratify_col = target_col
 
-    if shuffle:
-        rng = np.random.default_rng(seed)
-        indices = rng.permutation(len(data))
-        data = data.iloc[indices].reset_index(drop=True)
-
-    # Assign institution IDs
-    splits = np.array_split(range(len(data)), n_institutions)
-    institution_ids = [""] * len(data)
-    for i, split_indices in enumerate(splits):
-        inst_id = f"{prefix}_{i + 1}"
-        for idx in split_indices:
-            institution_ids[idx] = inst_id
-
-    data["institution_id"] = institution_ids
+    data = _assign_institution_ids(
+        df=df,
+        n_institutions=n_institutions,
+        seed=seed,
+        shuffle=shuffle,
+        split_strategy=split_strategy,
+        stratify_col=stratify_col,
+        cluster_col=cluster_col,
+        prefix=prefix,
+    )
 
     # Build aggregation using groupby with as_index=True for cleaner handling
     grouped = data.groupby("institution_id")
