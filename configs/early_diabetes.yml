@@ -46,7 +46,7 @@ preprocessing:
 representation: mixed_encoded
 
 consensus:
-  n_bootstraps: 50
+  n_bootstraps: 100
   numeric_jitter_scale: 0.05
   feature_bootstrap: true
   sample_fraction: 1.0
@@ -63,7 +63,7 @@ benchmark:
 
 perturbation:
   enabled: true
-  n_runs: 30
+  n_runs: 100
   n_institutions: 1
   kpis:
     - target_rate
