@@ -1,13 +1,30 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import silhouette_score
+
+
+def compute_silhouette(
+    X: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], labels: np.ndarray
+) -> float:
+    """Compute the silhouette score for a clustering assignment."""
+    if np.unique(labels).size < 2:
+        return 0.0
+    if isinstance(X, tuple):
+        X = np.hstack(X)
+    if X.size == 0 or X.shape[0] < 2:
+        return 0.0
+    return float(silhouette_score(X, labels))
 
 
 def stability_summary(
-    ari_scores: List[float], labels: np.ndarray, confidence: np.ndarray
+    ari_scores: List[float],
+    labels: np.ndarray,
+    confidence: np.ndarray,
+    X: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]],
 ) -> pd.DataFrame:
     """Summarize stability metrics for a given consensus run."""
     # Cluster sizes drive minimum size constraints.
@@ -17,6 +34,7 @@ def stability_summary(
         "std_ari": float(np.std(ari_scores)) if ari_scores else 0.0,
         "min_cluster_size": int(counts.min()) if not counts.empty else 0,
         "mean_confidence": float(np.mean(confidence)) if len(confidence) else 0.0,
+        "silhouette": compute_silhouette(X, labels),
     }
     return pd.DataFrame([summary])
 
