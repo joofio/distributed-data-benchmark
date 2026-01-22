@@ -131,3 +131,6 @@ dev/*
 
 
 .DS_Store
+
+obscare.csv
+reports/

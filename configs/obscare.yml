@@ -1,0 +1,203 @@
+seed: 42
+
+dataset:
+  type: real
+  path: data/obscare.csv
+  mapping: {}
+
+features:
+  id: institution_id
+  numeric:
+    # Obstetric history (means)
+    - A_PARA_mean
+    - A_GESTA_mean
+    - EUTOCITO_ANTERIOR_mean
+    - VENTOSAS_ANTERIOR_mean
+    - FORCEPS_ANTERIOR_mean
+    - CESARIANAS_ANTERIOR_mean
+    # Maternal characteristics (means)
+    - IDADE_MATERNA_mean
+    - PESO_INICIAL_mean
+    - IMC_mean
+    # Prenatal care (means)
+    - NUMERO_CONSULTAS_PRE_NATAL_mean
+    - IDADE_GESTACIONAL_ADMISSAO_mean
+    - SEMANAS_GESTACAO_PARTO_mean
+    - PESO_ADMISSAO_INTERNAMENTO_mean
+    # Estimated fetal weight by gestational week (means)
+    - ESTIMATIVA_PESO_ECO_24_mean
+    - ESTIMATIVA_PESO_ECO_25_mean
+    - ESTIMATIVA_PESO_ECO_26_mean
+    - ESTIMATIVA_PESO_ECO_27_mean
+    - ESTIMATIVA_PESO_ECO_28_mean
+    - ESTIMATIVA_PESO_ECO_29_mean
+    - ESTIMATIVA_PESO_ECO_30_mean
+    - ESTIMATIVA_PESO_ECO_31_mean
+    - ESTIMATIVA_PESO_ECO_32_mean
+    - ESTIMATIVA_PESO_ECO_33_mean
+    - ESTIMATIVA_PESO_ECO_34_mean
+    - ESTIMATIVA_PESO_ECO_35_mean
+    - ESTIMATIVA_PESO_ECO_36_mean
+    - ESTIMATIVA_PESO_ECO_37_mean
+    - ESTIMATIVA_PESO_ECO_38_mean
+    - ESTIMATIVA_PESO_ECO_39_mean
+    - ESTIMATIVA_PESO_ECO_40_mean
+    - ESTIMATIVA_PESO_ECO_41_mean
+    # Obstetric history (stds)
+    - A_PARA_std
+    - A_GESTA_std
+    - EUTOCITO_ANTERIOR_std
+    - VENTOSAS_ANTERIOR_std
+    - FORCEPS_ANTERIOR_std
+    - CESARIANAS_ANTERIOR_std
+    # Maternal characteristics (stds)
+    - IDADE_MATERNA_std
+    - PESO_INICIAL_std
+    - IMC_std
+    # Prenatal care (stds)
+    - NUMERO_CONSULTAS_PRE_NATAL_std
+    - IDADE_GESTACIONAL_ADMISSAO_std
+    - SEMANAS_GESTACAO_PARTO_std
+    - PESO_ADMISSAO_INTERNAMENTO_std
+    # Estimated fetal weight by gestational week (stds)
+    - ESTIMATIVA_PESO_ECO_24_std
+    - ESTIMATIVA_PESO_ECO_25_std
+    - ESTIMATIVA_PESO_ECO_26_std
+    - ESTIMATIVA_PESO_ECO_27_std
+    - ESTIMATIVA_PESO_ECO_28_std
+    - ESTIMATIVA_PESO_ECO_29_std
+    - ESTIMATIVA_PESO_ECO_30_std
+    - ESTIMATIVA_PESO_ECO_31_std
+    - ESTIMATIVA_PESO_ECO_32_std
+    - ESTIMATIVA_PESO_ECO_33_std
+    - ESTIMATIVA_PESO_ECO_34_std
+    - ESTIMATIVA_PESO_ECO_35_std
+    - ESTIMATIVA_PESO_ECO_36_std
+    - ESTIMATIVA_PESO_ECO_37_std
+    - ESTIMATIVA_PESO_ECO_38_std
+    - ESTIMATIVA_PESO_ECO_39_std
+    - ESTIMATIVA_PESO_ECO_40_std
+    - ESTIMATIVA_PESO_ECO_41_std
+    # Institution size
+    - n_patients
+  categorical:
+    # Fetal presentation by gestational week
+    - APRESENTACAO_24_mode
+    - APRESENTACAO_25_mode
+    - APRESENTACAO_26_mode
+    - APRESENTACAO_27_mode
+    - APRESENTACAO_28_mode
+    - APRESENTACAO_29_mode
+    - APRESENTACAO_30_mode
+    - APRESENTACAO_31_mode
+    - APRESENTACAO_32_mode
+    - APRESENTACAO_33_mode
+    - APRESENTACAO_34_mode
+    - APRESENTACAO_35_mode
+    - APRESENTACAO_36_mode
+    - APRESENTACAO_37_mode
+    - APRESENTACAO_38_mode
+    - APRESENTACAO_39_mode
+    - APRESENTACAO_40_mode
+    - APRESENTACAO_41_mode
+    - APRESENTACAO_ADMISSAO_mode
+    - APRESENTACAO_NO_PARTO_mode
+    # Maternal health conditions
+    - DIABETES_TIPO1_mode
+    - DIABETES_TIPO2_mode
+    - DIABETES_GESTACIONAL_mode
+    - DIABETES_GESTACIONAL_INSULINA_mode
+    - DIABETES_GESTACIONAL_DIETA_mode
+    - DIABETES_GESTACIONAL_ANTIBIO_mode
+    - DIABETES_MATERNA_mode
+    - HIPERTENSAO_CRONICA_mode
+    - HIPERTENSAO_GESTACIONAL_mode
+    - HIPERTENSAO_PRE_ECLAMPSIA_mode
+    - HEMATOLOGICA_mode
+    - CARDIACA_mode
+    - CEREBRAL_mode
+    - RESPIRATORIA_mode
+    # Bishop score components
+    - BISHOP_SCORE_mode
+    - BISHOP_DILATACAO_mode
+    - BISHOP_EXTINCAO_mode
+    - BISHOP_DESCIDA_mode
+    - BISHOP_CONSISTENCIA_mode
+    - BISHOP_POSICAO_mode
+    # Labor characteristics
+    - TRAB_PARTO_ENTRADA_ESPONTANEO_mode
+    - TRAB_PARTO_ENTRADA_INDUZIDO_mode
+    - TRAB_PARTO_NO_PARTO_mode
+    - CESARIANAS_MOTIVO_ANTERIOR_mode
+    - RPM_mode
+    # Pregnancy and care
+    - TIPO_GRAVIDEZ_mode
+    - GRUPO_ROBSON_mode
+    - BACIA_mode
+    - E_ALT_UT_mode
+    # Prenatal surveillance
+    - VIGIADA_mode
+    - VIGIADA_NESTE_HOSPITAL_mode
+    - VIGIADA_CENTRO_SAUDE_mode
+    - VIGIADA_HOSPITAL_mode
+    - VIGIADA_PARICULAR_mode
+    # Blood type
+    - GS_ABO_mode
+    - GS_RH_mode
+    # Lifestyle factors
+    - CIGARROS_mode
+    - ALCOOL_mode
+    - ESTUPEFACIENTES_mode
+
+
+targets:
+  kpis:
+    - target_rate        # Outcome rate (e.g., cesarean rate, adverse outcome)
+    - target_std         # Variability in outcomes
+  descriptors:
+    - n_patients
+
+preprocessing:
+  categorical_encoding: ordinal
+
+representation: numeric
+
+consensus:
+  n_bootstraps: 100
+  numeric_jitter_scale: 0.05
+  feature_bootstrap: true
+  sample_fraction: 1.0
+  mixed_weight: 0.5
+
+benchmark:
+  outlier_percentile_low: 5
+  outlier_percentile_high: 95
+  outlier_zscore_abs: 2.0
+  knn_k:
+    - 3
+    - 5
+    - 7
+
+perturbation:
+  enabled: true
+  n_runs: 100
+  n_institutions: 9
+  kpis:
+    - target_rate
+  shift:
+    type: additive
+    magnitude_min: 0.1
+    magnitude_max: 0.3
+    magnitudes: [0.1, 0.2, 0.3]
+
+selection:
+  # With 9 institutions and bootstrap sampling, some runs may have only 4-5 unique samples
+  # k_values must stay within this range to avoid n_samples < n_clusters errors
+  k_values: [2, 3, 4]
+  min_cluster_size: 1
+  stability_plateau_delta: 0.05
+
+output:
+  tables_dir: reports/obscare/tables
+  figures_dir: reports/obscare/figures
+  summary_path: reports/obscare/summary.json

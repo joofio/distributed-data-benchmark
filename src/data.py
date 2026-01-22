@@ -320,6 +320,142 @@ def aggregate_to_institutions(
     return result_df
 
 
+def aggregate_by_institution(
+    df: pd.DataFrame,
+    institution_col: str,
+    numeric_cols: List[str],
+    categorical_cols: List[str],
+    target_col: str,
+    output_id_col: str = "institution_id",
+) -> pd.DataFrame:
+    """
+    Aggregate patient-level data to institution level using an existing institution column.
+
+    Unlike aggregate_to_institutions which creates synthetic institution assignments,
+    this function uses a pre-existing institution/site identifier column to group
+    and aggregate patient-level records.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Patient-level DataFrame with an existing institution identifier column.
+    institution_col : str
+        Name of the column containing institution identifiers.
+    numeric_cols : List[str]
+        Columns to aggregate as numeric features (mean, std computed).
+    categorical_cols : List[str]
+        Columns to aggregate as categorical features (mode computed).
+    target_col : str
+        Column containing the outcome/diagnosis. Will become a KPI
+        (prevalence rate for binary, mean for continuous).
+    output_id_col : str, default "institution_id"
+        Name for the institution identifier column in the output DataFrame.
+
+    Returns
+    -------
+    pd.DataFrame
+        Institution-level DataFrame where each row is one institution with:
+        - {output_id_col}: institution identifier (from institution_col)
+        - n_patients: number of patients in institution
+        - {col}_mean: mean of numeric feature across patients
+        - {col}_std: std of numeric feature across patients
+        - {col}_mode: most common value for categorical features
+        - target_rate: prevalence rate (mean of target, works for binary 0/1)
+        - target_std: variability of outcomes
+
+    Raises
+    ------
+    ValueError
+        If institution_col is not found in the DataFrame.
+    KeyError
+        If specified columns are not found in the DataFrame.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     "hospital": ["A", "A", "A", "B", "B", "B"],
+    ...     "age": [25, 30, 35, 40, 45, 50],
+    ...     "sex": [0, 1, 0, 1, 0, 1],
+    ...     "outcome": [0, 0, 1, 0, 1, 1]
+    ... })
+    >>> result = aggregate_by_institution(
+    ...     df, institution_col="hospital",
+    ...     numeric_cols=["age"], categorical_cols=["sex"],
+    ...     target_col="outcome"
+    ... )
+    >>> list(result.columns)
+    ['institution_id', 'n_patients', 'age_mean', 'age_std', 'sex_mode', 'target_rate', 'target_std']
+    >>> result["institution_id"].tolist()
+    ['A', 'B']
+    """
+    if institution_col not in df.columns:
+        raise ValueError(f"Institution column not found in DataFrame: {institution_col}")
+
+    # Validate that specified columns exist
+    missing_numeric = [c for c in numeric_cols if c not in df.columns]
+    if missing_numeric:
+        raise KeyError(f"Numeric columns not found: {missing_numeric}")
+
+    missing_categorical = [c for c in categorical_cols if c not in df.columns]
+    if missing_categorical:
+        raise KeyError(f"Categorical columns not found: {missing_categorical}")
+
+    if target_col not in df.columns:
+        raise KeyError(f"Target column not found: {target_col}")
+
+    # Validate that numeric columns are actually numeric
+    non_numeric = [
+        c for c in numeric_cols if not pd.api.types.is_numeric_dtype(df[c])
+    ]
+    if non_numeric:
+        dtypes = {c: str(df[c].dtype) for c in non_numeric}
+        raise TypeError(
+            f"Columns specified as numeric have non-numeric dtype: {dtypes}. "
+            "Convert these columns first or move them to categorical_cols."
+        )
+
+    # Validate target column is numeric
+    if not pd.api.types.is_numeric_dtype(df[target_col]):
+        raise TypeError(
+            f"Target column '{target_col}' has dtype '{df[target_col].dtype}', "
+            "but must be numeric for rate/std aggregation."
+        )
+
+    # Group by existing institution column
+    grouped = df.groupby(institution_col)
+
+    # Start with patient counts
+    result_df = grouped.size().reset_index(name="n_patients")
+    result_df = result_df.rename(columns={institution_col: output_id_col})
+
+    # Aggregate numeric columns (mean and std)
+    for col in numeric_cols:
+        means = grouped[col].mean().reset_index(name=f"{col}_mean")
+        stds = grouped[col].std().reset_index(name=f"{col}_std")
+        means = means.rename(columns={institution_col: output_id_col})
+        stds = stds.rename(columns={institution_col: output_id_col})
+        result_df = result_df.merge(means, on=output_id_col)
+        result_df = result_df.merge(stds, on=output_id_col)
+
+    # Aggregate categorical columns (mode)
+    for col in categorical_cols:
+        modes = grouped[col].agg(
+            lambda x: x.mode().iloc[0] if len(x.mode()) > 0 else np.nan
+        ).reset_index(name=f"{col}_mode")
+        modes = modes.rename(columns={institution_col: output_id_col})
+        result_df = result_df.merge(modes, on=output_id_col)
+
+    # Aggregate target column as KPI
+    target_mean = grouped[target_col].mean().reset_index(name="target_rate")
+    target_std = grouped[target_col].std().reset_index(name="target_std")
+    target_mean = target_mean.rename(columns={institution_col: output_id_col})
+    target_std = target_std.rename(columns={institution_col: output_id_col})
+    result_df = result_df.merge(target_mean, on=output_id_col)
+    result_df = result_df.merge(target_std, on=output_id_col)
+
+    return result_df
+
+
 def load_dataset(cfg: Dict[str, Any]) -> pd.DataFrame:
     """Load and validate dataset based on config."""
     dataset_cfg = cfg["dataset"]
