@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -46,7 +48,9 @@ def _validate_representation(X, representation: str) -> None:
         X_num, X_cat = X
         # mixed_separated requires both numeric and categorical matrices.
         if X_num.size == 0 or X_cat.size == 0:
-            raise ValueError("mixed_separated requires both numeric and categorical features")
+            raise ValueError(
+                "mixed_separated requires both numeric and categorical features"
+            )
     else:
         # Other representations must contain at least one feature column.
         if X.size == 0:
@@ -59,6 +63,33 @@ def _knn_representation(reps, representation: str) -> np.ndarray:
     if representation == "mixed_separated":
         return reps.mixed_encoded
     return _select_representation(reps, representation)
+
+
+def _sha256_bytes(data: bytes) -> str:
+    """Compute the SHA256 hash for the provided bytes."""
+    return hashlib.sha256(data).hexdigest()
+
+
+def _sha256_file(path: str) -> str:
+    """Compute the SHA256 hash for a file on disk."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(8192), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_config(cfg: Dict[str, Any]) -> str:
+    """Compute a SHA256 hash of the config dict serialized as sorted-key JSON."""
+    payload = json.dumps(cfg, sort_keys=True, separators=(",", ":"), default=str)
+    return _sha256_bytes(payload.encode("utf-8"))
+
+
+def _sha256_outputs(paths: List[str]) -> str:
+    """Compute a SHA256 hash covering critical output artifacts."""
+    file_hashes = {path: _sha256_file(path) for path in sorted(paths)}
+    payload = json.dumps(file_hashes, sort_keys=True, separators=(",", ":"))
+    return _sha256_bytes(payload.encode("utf-8"))
 
 
 def _k_sweep(
@@ -127,13 +158,16 @@ def _choose_k(k_summary: pd.DataFrame, cfg: Dict[str, Any]) -> int:
     if plateau.empty:
         plateau = k_summary
     # Tie-break by perturbation recall, then mean ARI.
-    best = plateau.sort_values(by=["mean_recall", "mean_ari", "k"], ascending=[False, False, True]).iloc[0]
+    best = plateau.sort_values(
+        by=["mean_recall", "mean_ari", "k"], ascending=[False, False, True]
+    ).iloc[0]
     return int(best["k"])
 
 
 def run_pipeline(config_path: str) -> None:
     """Run the full benchmarking pipeline from config."""
     cfg = load_config(config_path)
+    config_hash = _sha256_config(cfg)
     logger = get_logger()
     set_seed(cfg["seed"])
 
@@ -160,7 +194,9 @@ def run_pipeline(config_path: str) -> None:
     global_bench = global_benchmark(df, cfg)
     knn_bench = knn_benchmark(df, _knn_representation(reps, representation), cfg)
     rule_bench = rule_based_benchmark(df, cfg)
-    benchmark_df = combine_benchmarks([peer_benchmark, global_bench, knn_bench, rule_bench])
+    benchmark_df = combine_benchmarks(
+        [peer_benchmark, global_bench, knn_bench, rule_bench]
+    )
 
     perturb_df = cache[selected_k]["perturbation"]
 
@@ -174,7 +210,9 @@ def run_pipeline(config_path: str) -> None:
         }
     )
 
-    coassign_df = pd.DataFrame(consensus.coassignment, index=df[id_col], columns=df[id_col])
+    coassign_df = pd.DataFrame(
+        consensus.coassignment, index=df[id_col], columns=df[id_col]
+    )
 
     tables_dir = outputs["tables_dir"]
     figures_dir = outputs["figures_dir"]
@@ -183,7 +221,16 @@ def run_pipeline(config_path: str) -> None:
     coassign_df.to_csv(f"{tables_dir}/coassignment_matrix.csv")
     save_csv(k_summary, f"{tables_dir}/k_sweep_summary.csv")
     save_csv(
-        k_summary[["k", "mean_ari", "std_ari", "min_cluster_size", "mean_confidence", "silhouette"]],
+        k_summary[
+            [
+                "k",
+                "mean_ari",
+                "std_ari",
+                "min_cluster_size",
+                "mean_confidence",
+                "silhouette",
+            ]
+        ],
         f"{tables_dir}/stability_summary.csv",
     )
     save_csv(benchmark_df, f"{tables_dir}/benchmark_results.csv")
@@ -191,20 +238,39 @@ def run_pipeline(config_path: str) -> None:
         save_csv(perturb_df, f"{tables_dir}/perturbation_eval.csv")
 
     # Produce figures.
-    plot_coassignment_heatmap(consensus.coassignment, df[id_col].tolist(), f"{figures_dir}/coassignment_heatmap.png")
+    plot_coassignment_heatmap(
+        consensus.coassignment,
+        df[id_col].tolist(),
+        f"{figures_dir}/coassignment_heatmap.png",
+    )
     plot_stability_vs_k(k_summary, f"{figures_dir}/stability_vs_k.png")
     for kpi in cfg["targets"]["kpis"]:
-        plot_benchmark_percentiles(benchmark_df, kpi, f"{figures_dir}/benchmark_percentiles_{kpi}.png")
+        plot_benchmark_percentiles(
+            benchmark_df, kpi, f"{figures_dir}/benchmark_percentiles_{kpi}.png"
+        )
         if not perturb_df.empty:
             plot_perturbation_detection_curve(
                 perturb_df, kpi, f"{figures_dir}/perturbation_detection_curve_{kpi}.png"
             )
+
+    output_paths = [
+        f"{tables_dir}/peer_assignments.csv",
+        f"{tables_dir}/coassignment_matrix.csv",
+        f"{tables_dir}/k_sweep_summary.csv",
+        f"{tables_dir}/stability_summary.csv",
+        f"{tables_dir}/benchmark_results.csv",
+    ]
+    if not perturb_df.empty:
+        output_paths.append(f"{tables_dir}/perturbation_eval.csv")
+    output_hash = _sha256_outputs(output_paths)
 
     # Save summary JSON for quick inspection.
     summary_json = {
         "selected_k": selected_k,
         "representation": representation,
         "k_sweep": k_summary.to_dict(orient="records"),
+        "config_hash": config_hash,
+        "output_hash": output_hash,
     }
     save_json(summary_json, outputs["summary_path"])
 
