@@ -26,6 +26,7 @@ from src.plots import (
     plot_stability_vs_k,
 )
 from src.preprocess import prepare_representations
+from src.privacy import add_laplace_noise
 from src.utils import ensure_dir, get_logger, load_config, save_csv, save_json, set_seed
 
 
@@ -164,8 +165,16 @@ def _choose_k(k_summary: pd.DataFrame, cfg: Dict[str, Any]) -> int:
     return int(best["k"])
 
 
-def run_pipeline(config_path: str) -> None:
-    """Run the full benchmarking pipeline from config."""
+def run_pipeline(config_path: str, privacy_epsilon: float = None) -> None:
+    """Run the full benchmarking pipeline from config.
+    
+    Parameters
+    ----------
+    config_path : str
+        Path to configuration YAML file.
+    privacy_epsilon : float, optional
+        Privacy budget for LDP noise injection. If None, no noise is added.
+    """
     cfg = load_config(config_path)
     config_hash = _sha256_config(cfg)
     logger = get_logger()
@@ -179,6 +188,18 @@ def run_pipeline(config_path: str) -> None:
     # Load data and prepare feature representations.
     df = load_dataset(cfg)
     reps = prepare_representations(df, cfg)
+    
+    # Apply LDP noise if privacy epsilon is specified
+    if privacy_epsilon is not None and privacy_epsilon != float('inf'):
+        logger.info("Applying LDP noise with epsilon=%.2f", privacy_epsilon)
+        if reps.numeric is not None:
+            reps.numeric = add_laplace_noise(
+                reps.numeric, privacy_epsilon, seed=cfg["seed"]
+            )
+        if reps.mixed_encoded is not None:
+            reps.mixed_encoded = add_laplace_noise(
+                reps.mixed_encoded, privacy_epsilon, seed=cfg["seed"]
+            )
 
     # Sweep K values and select the best K.
     k_summary, cache = _k_sweep(df, reps, cfg)
@@ -279,8 +300,16 @@ def main() -> None:
     """CLI entrypoint for running experiments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, help="Path to config YAML")
+    parser.add_argument("--privacy-epsilon", type=float, default=None,
+                        help="Privacy budget for LDP noise. Use 'inf' for no noise.")
     args = parser.parse_args()
-    run_pipeline(args.config)
+    
+    # Pass privacy epsilon through config override
+    epsilon = args.privacy_epsilon
+    if epsilon is not None:
+        run_pipeline(args.config, privacy_epsilon=epsilon)
+    else:
+        run_pipeline(args.config)
 
 
 if __name__ == "__main__":
