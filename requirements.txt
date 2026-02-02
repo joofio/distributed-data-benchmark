@@ -1,8 +1,0 @@
-scikit-learn
-pandas
-numpy
-matplotlib
-scipy
-kmodes
-PyYAML
-streamlit
