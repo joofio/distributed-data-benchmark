@@ -1,0 +1,48 @@
+# Configuration for synthetic ground-truth validation experiments
+# Used by ground_truth_validation.py to sweep over parameter combinations
+
+# Parameter sweep configuration
+n_institutions:
+  - 20
+  - 30
+  - 50
+
+n_clusters:
+  - 3
+  - 4
+  - 5
+
+cluster_separation:
+  - 1.0   # Hard: overlapping clusters
+  - 2.0   # Medium: distinguishable clusters
+  - 3.0   # Easy: well-separated clusters
+
+# Clustering methods to compare
+methods:
+  - mixed_encoded
+  - gower_pam
+  - kprototypes
+  - hierarchical_gower
+
+# Synthetic data generation defaults
+synthetic_generation:
+  n_numeric_features: 10
+  n_categorical_features: 5
+  n_categories_per_feature: 4
+  within_cluster_std: 1.0
+  kpi_cluster_effect: 1.5
+
+# Consensus clustering settings for validation
+consensus:
+  n_bootstraps: 50   # Reduced for speed in sweep
+  numeric_jitter_scale: 0.05
+  feature_bootstrap: true
+  sample_fraction: 1.0
+  mixed_weight: 0.5
+  kprototypes_gamma: 0.5
+
+# Output settings
+output:
+  tables_dir: results/synthetic/tables
+  figures_dir: results/synthetic/figures
+  summary_path: results/synthetic/ground_truth_summary.json
